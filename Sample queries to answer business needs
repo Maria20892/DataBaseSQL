@@ -1,0 +1,120 @@
+Sample queries to answer business needs:
+
+--Find how many kilograms of grass, is planned to be distributed to all animals in the zoo
+
+SELECT SUM(tempTable.Amount_in_kg) as 'Kg_of_grass_per_day'
+FROM (
+SELECT Meal_ID, P.Ing_ID, P.Amount_in_kg, C.Ingredient_name  
+FROM Meals 
+JOIN Feeding_plan as F
+ON F.D_ID = Meals.D_ID
+JOIN Planned_Ingredient as P
+ON P.M_ID = Meals.Meal_ID
+JOIN Catalog_of_ingredients as C
+ON P.Ing_ID = C.Ingredient_ID
+WHERE C.Ingredient_name = 'grass'
+) AS tempTable;
+
+--Find all animal(Animal_ID) whose total number of meals form 01 November 2022, to 08 November 2022 is lesser than 4. 
+
+SELECT A_ID as Animal_ID
+FROM Feeding_details
+WHERE Feeding_date BETWEEN '2022-11-01' AND '2022-11-08'
+GROUP BY A_ID
+HAVING COUNT(A_ID) < 2
+ORDER BY A_ID;
+
+
+--Find all female employees, who were responsible for giving meals on 1 November 2022.
+
+SELECT DISTINCT FD.E_ID, E.First_name, E.Last_name 
+FROM Feeding_details as FD
+JOIN Employees as E
+ON FD.E_ID = E.ID
+WHERE FD.Feeding_date = '2022-11-01'
+AND E.Gender = 'F';
+
+
+--an animal has gotten sick and a spoiled ingridient was at fault. 
+--The zoo needs to find all animals who, in specific period of time, recieved meals containing that ingridient.
+-- Ingredient is a fig
+
+SELECT DISTINCT A.Animal_ID, A.AName, S.Name
+FROM Animals as A
+JOIN Scientific_classification as S
+ON S.ID = A.ID_SC
+JOIN Feeding_details as FD
+ON FD.A_ID = A.Animal_ID
+JOIN Meals as M
+ON M.Meal_ID=FD.M_ID
+JOIN Planned_Ingredient as Pl
+ON M.Meal_ID = Pl.M_ID
+JOIN Catalog_of_ingredients as CI
+ON CI.Ingredient_ID = Pl.Ing_ID
+LEFT JOIN Changed_ingredient as Ch
+ON Ch.Feed_ID = FD.Feeding_ID
+WHERE CI.Ingredient_name = 'figa'
+OR Ch.Ing_ID = (SELECT CI.Ingredient_ID 
+				FROM Catalog_of_ingredients 
+				WHERE Catalog_of_ingredients.Ingredient_name = 'figa')
+AND FD.Feeding_date BETWEEN '2022-11-01' AND '2022-11-15' 
+ORDER BY A.Animal_ID
+
+
+--an ingridient cabbage has spoiled due to wrong storage method. 
+--the zoo needs list of all diets containing the ingridient that should be altered until new batch can be delivered.
+
+SELECT M.D_ID as Diets_to_change, C.Ingredient_name
+FROM Meals as M
+JOIN Planned_Ingredient as P
+ON P.M_ID= M.Meal_ID
+JOIN Catalog_of_ingredients as C
+ON C.Ingredient_ID = P.Ing_ID
+WHERE C.Ingredient_name = 'cabbage'
+ORDER BY M.D_ID;
+
+
+--A new disease affecting specific genus of animals was discovered and one of the animals got sick. 
+--To ensure that the employees don't get sick, the zoo needs the list of all employees that fed the animal of that genus in specific period of time
+
+
+SELECT DISTINCT E.First_name, E.Last_name, E.ID, P.Position_Name, S.Genus
+FROM Employees as E
+JOIN Positions as P
+ON P.Position_ID = E.Position_ID
+JOIN Feeding_details as F
+ON F.E_ID = E.ID
+JOIN Animals as A
+ON A.Animal_ID = F.A_ID
+JOIN Scientific_classification as S
+ON S.ID = A.ID_SC
+WHERE P.Position_Name = 'Care giver'
+AND S.Genus = 'Hippopotamus';
+
+--	Employee wants to see how many animals and of what gender are currently live in tropical zone_type
+
+SELECT COUNT(A.Animal_ID) as Number_Of_Animals, A.Gender
+FROM Animals as A
+JOIN Zoo_location as Z
+ON A.C_ID = Z.Cage_ID
+WHERE Z.Zone_type = 'Tropical'
+GROUP BY A.Gender, Z.Zone_type;
+
+--CEO wants to see from which countries animals has arrived during last 6 years
+SELECT O.Country_name, count(A.Animal_ID)
+FROM A_Origin as O
+JOIN Animals as A
+ON A.CityID = O.City_ID
+JOIN Scientific_classification as S
+ON A.ID_SC = S.ID
+WHERE A.Registration_date BETWEEN '2018-01-01' AND '2023-01-01'
+GROUP BY O.Country_name;
+
+--Employee wants to see who and in which cage lives
+SELECT Z.Cage_ID, A.AName, S.Name, A.Registration_date, A.Animal_ID
+FROM Zoo_location as Z
+JOIN Animals as A
+ON A.C_ID = Z.Cage_ID
+JOIN Scientific_classification as S
+ON S.ID = A.ID_SC
+ORDER BY Z.Cage_ID;
